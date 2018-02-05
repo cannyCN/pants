@@ -1,7 +1,10 @@
-#include <cv.h>
-#include <highgui.h>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+#include <opencv2/imgcodecs.hpp>
 #include <stdlib.h>
 #include <stdio.h>
+#include <vector>
+#include <iostream>
 
 // define matrix for picture
 IplImage* image = 0;
@@ -24,11 +27,79 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
+std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSeq* contour, int treshold = 10, int linewidth = 2){
+	  IplImage *img_contours = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
+	cvSet(img_contours, 0);
+	cvDrawContours(img_contours,
+		   contour,
+		   WHITE,
+		   BLACK,
+    	   255,linewidth , CV_AA, 0);
+	IplImage *img_line = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
+	cvSet(img_line, 0);
+	
+	cvLine(img_line,
+      a,
+      b,
+      WHITE,
+     linewidth, CV_AA, 0);
+	
+	cv::Mat res;
+	std::vector<CvPoint> *pointst = new std::vector<CvPoint>();
+	bitwise_and(cv::cvarrToMat(img_contours),cv::cvarrToMat(img_line), res); 
+	cvSaveImage("output/result3.jpg", img_line);
+	cvSaveImage("output/result4.jpg", img_contours);
+	imwrite("output/result.jpg",res);
+	for(int i =0 ;i <res.rows;i++)
+		 {
+			 for(int j=0; j<res.cols; j++)
+			 {
+				int rv = res.at<uchar>(i,j);
+			   if( rv > 0)
+			   {
+
+				   pointst->push_back(CvPoint(j,i));
+				   
+
+			   }
+				 
+				 
+				 
+
+			 }
+		 }
+	
+	std::vector<CvPoint> *points = new std::vector<CvPoint>();
+	for(std::vector<CvPoint>::iterator it = pointst->begin(); it < pointst->end(); it++){
+		CvPoint p = CvPoint((*it).x, (*it).y);
+		CvPoint ptmp = CvPoint((*it).x, (*it).y);
+		int counter = 1;
+		
+		for(std::vector<CvPoint>::iterator it2 = pointst->begin(); it2 < pointst->end(); it2++){
+			CvPoint diff = CvPoint(p.x - (*it2).x,p.y-(*it2).y);
+			
+              if (cv::sqrt(diff.x*diff.x + diff.y*diff.y) < treshold){
+				  ptmp =CvPoint(ptmp.x + (*it2).x,ptmp.y+(*it2).y);
+				  counter++;
+				  pointst->erase(it2);
+				  it2--;
+			  }
+		}
+		
+		ptmp =CvPoint(ptmp.x / counter,ptmp.y/counter);
+		points->push_back(ptmp);
+		std::cout<<ptmp.x<<" "<<ptmp.y<<std::endl;
+	}
+	delete pointst;
+	return points;
+
+}
+
 int main(int argc, char* argv[])
 {
   
   // Load an image
-  char* filename = argc >= 2 ? argv[1] : "test1.jpg";
+  const char* filename = argc >= 2 ? argv[1] : "test1.jpg";
   image = cvLoadImage(filename, 1);
   printf("[i] image: %s\n", filename);
   assert(image != 0);
@@ -330,6 +401,18 @@ int main(int argc, char* argv[])
   double k = 0.04;
 
   printf("Longest contour, App poly points %d %d\n", seqT->total, result->total);
+	std::vector<CvPoint>* points = getIntersections(gray_picture, CvPoint(0,0),CvPoint(gray_picture->width, gray_picture->height), seqT, 15, 2);
+	std::cout<<"intersections count "<<points->size()<<std::endl;
+	std::vector<CvPoint>::iterator point = points->begin();
+	cvLine(gray_picture,
+      CvPoint(0,0),
+      CvPoint(gray_picture->width, gray_picture->height),
+      WHITE,
+     2, CV_AA, 0);
+	cvCircle(gray_picture, *point, 50, WHITE, 5, 8, 0);
+	point++;
+	cvCircle(gray_picture, *point, 50, WHITE, 5, 8, 0);
+	 cvSaveImage("output/result2.jpg", gray_picture);
   /*
   // convexHull
   CvSeq* hull2 = 0;
