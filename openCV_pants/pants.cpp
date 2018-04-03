@@ -1,18 +1,13 @@
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
-#include <opencv2/imgcodecs.hpp>
+#include <cv.h>
+#include <highgui.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <vector>
-#include <iostream>
-#include <JsonBox.h>
-
-using namespace JsonBox;
 
 // define matrix for picture
 IplImage* image = 0;
-
 IplImage* gray_picture = 0;
+IplImage *img_roi = 0;
+IplImage* HSB_picture = 0;
 
 // variables
 double unit = 0.;
@@ -30,91 +25,22 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
-std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSeq* contour, int treshold = 10, int linewidth = 2){
-	  IplImage *img_contours = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
-	cvSet(img_contours, 0);
-	cvDrawContours(img_contours,
-		   contour,
-		   WHITE,
-		   BLACK,
-    	   255,linewidth , CV_AA, 0);
-	IplImage *img_line = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
-	cvSet(img_line, 0);
-	
-	cvLine(img_line,
-      a,
-      b,
-      WHITE,
-     linewidth, CV_AA, 0);
-	
-	cv::Mat res;
-	std::vector<CvPoint> *pointst = new std::vector<CvPoint>();
-	bitwise_and(cv::cvarrToMat(img_contours),cv::cvarrToMat(img_line), res); 
-	cvSaveImage("output/result3.jpg", img_line);
-	cvSaveImage("output/result4.jpg", img_contours);
-	imwrite("output/result.jpg",res);
-	for(int i =0 ;i <res.rows;i++)
-		 {
-			 for(int j=0; j<res.cols; j++)
-			 {
-				int rv = res.at<uchar>(i,j);
-			   if( rv > 0)
-			   {
-
-				   pointst->push_back(CvPoint(j,i));
-				   
-
-			   }
-				 
-				 
-				 
-
-			 }
-		 }
-	
-	std::vector<CvPoint> *points = new std::vector<CvPoint>();
-	for(std::vector<CvPoint>::iterator it = pointst->begin(); it < pointst->end(); it++){
-		CvPoint p = CvPoint((*it).x, (*it).y);
-		CvPoint ptmp = CvPoint((*it).x, (*it).y);
-		int counter = 1;
-		
-		for(std::vector<CvPoint>::iterator it2 = pointst->begin(); it2 < pointst->end(); it2++){
-			CvPoint diff = CvPoint(p.x - (*it2).x,p.y-(*it2).y);
-			
-              if (cv::sqrt(diff.x*diff.x + diff.y*diff.y) < treshold){
-				  ptmp =CvPoint(ptmp.x + (*it2).x,ptmp.y+(*it2).y);
-				  counter++;
-				  pointst->erase(it2);
-				  it2--;
-			  }
-		}
-		
-		ptmp =CvPoint(ptmp.x / counter,ptmp.y/counter);
-		points->push_back(ptmp);
-		std::cout<<ptmp.x<<" "<<ptmp.y<<std::endl;
-	}
-	delete pointst;
-	return points;
-
-}
-
-CvPoint contourIterate(CvSeq contour, CvPoint point, float num){
-	CvPoint result = new CvPoint(0,0);
-		return result;
-}
-
 int main(int argc, char* argv[])
 {
-  
+
   // Load an image
-  const char* filename = argc >= 2 ? argv[1] : "test1.jpg";
+  char* filename = argc >= 2 ? argv[1] : "test.jpg";
   image = cvLoadImage(filename, 1);
   printf("[i] image: %s\n", filename);
   assert(image != 0);
 
-  // Create images 
+  /// Create images 
   // 1 channel for GrayScale 
   gray_picture = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+  // 1 image for ROI
+  img_roi = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
+  // 3 channels image for HSB
+  HSB_picture = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 3);
 
   /// ---------------------------------- Select yellow ---------------------------
   // confert to HSB and select yellow color
@@ -122,43 +48,39 @@ int main(int argc, char* argv[])
     gray_picture,
     //CV_RGB2HSV);
     CV_RGB2GRAY);
-
-  // set ROI
-  cvSetImageROI(gray_picture, 
-    cvRect(
-      (gray_picture -> width) * 0.7,
-      0,
-      gray_picture->width,
-      (gray_picture->height) * 0.3)
-  );
-
-  // create image with ROI
-  // cvGetSize will return the width and the height of ROI 
-  IplImage *img_roi = cvCreateImage(cvGetSize(gray_picture), IPL_DEPTH_8U, 1);
-
-  // copy subimage 
+  
+  // copy image 
   cvCopy(gray_picture, img_roi, NULL);
 
-  // reset the Region of Interest
-  cvResetImageROI(gray_picture);
+  // set ROI
+  cvSetImageROI(img_roi,
+    cvRect(0, 0, 
+    cvRound((img_roi->width) * 0.7), (img_roi->height))
+  );
 
-  // split HSV to different picture
-  //cvSplit(yellow_picture, NULL, NULL, NULL, gray_picture);
+  // set ROI to zero
+  cvSet(img_roi, 0, img_roi);
+  cvResetImageROI(img_roi);
 
-  /// select color
-  // Photoshop measurements
-  // Photoshop range Hue [0,360], Saturation [0,100], Value [0,100]
-  // H 49-58, S 9-13%, V 95-98%
-  // OpenCV range Hue [0,179], Saturation [0,255], Value [0,255]
-  // Recommended range
-  // Range +-10 H, 50-255 S, 50-255 V
-  // H [22,32] S [50,255], V [50,255]
-  cvInRangeS(img_roi,     
-    220,     
-    250,     
+  // set ROI
+  cvSetImageROI(img_roi,
+    cvRect(0, cvRound((gray_picture->height) * 0.3),
+    (img_roi->width), (img_roi->height))
+  );
+
+  // set ROI to zero
+  cvSet(img_roi, 0, img_roi);
+  cvResetImageROI(img_roi);
+
+  // use grayscale
+  cvInRangeS(img_roi,
+    180,
+    250,
     img_roi);
+    
   /// ---------------------------------- End Select yellow -----------------------
-  
+
+
   /// ---------------------------------- Canny -----------------------------------
   // Smoothing with Gaussian filter
   cvSmooth(img_roi,
@@ -209,7 +131,7 @@ int main(int argc, char* argv[])
       }
     }
   }
-     
+
   // Draw contour 
   cvDrawContours(img_roi,
     seqT,
@@ -231,7 +153,7 @@ int main(int argc, char* argv[])
   pt0.x = cvRound(rect_vtx[3].x);
   pt0.y = cvRound(rect_vtx[3].y);
   int i = 0;
-  for (i = 0; i < 4; i++) 
+  for (i = 0; i < 4; i++)
   {
 
 
@@ -243,13 +165,13 @@ int main(int argc, char* argv[])
 
     pt.x = cvRound(rect_vtx[i].x);
     pt.y = cvRound(rect_vtx[i].y);
-    
+
     //draw blue rectagle around yellow rectangle
-    cvLine(img_roi,
+    cvLine(image,
       pt0,
       pt,
       BLUE,
-     20, CV_AA, 0);
+      20, CV_AA, 0);
     pt0 = pt;
   }
 
@@ -299,8 +221,56 @@ int main(int argc, char* argv[])
   printf("%f", unit);
   printf(" pixel/inch\n");
   printf("\n");
-  
+
   /// --------------------------- end pixels_per_metric --------------------------
+
+  /// ---------------------------- find background -------------------------------
+ 
+ // confert to HSB and select yellow color
+  cvCvtColor(image,
+    HSB_picture,
+    CV_RGB2HSV);
+    
+  // split HSV to different picture
+  //cvSplit(HSB_picture, img_roi, NULL, NULL, NULL);
+
+  /// select color
+  // Photoshop measurements for background
+  // H 133-139, S 74-86%, V 56-65%
+  // Photoshop range Hue [0,360], Saturation [0,100], Value [0,100]
+  // OpenCV range Hue [0,179], Saturation [0,255], Value [0,255]
+  // Recommended range
+  // Range +-10 H, 50-255 S, 50-255 V
+  // H [60,80] S [50,255], V [50,255]
+  cvInRangeS(HSB_picture,
+    cvScalar(40, 50, 50),
+    cvScalar(80, 255, 255),
+    gray_picture);
+    
+  // fill yellow square with white
+  // use yellow square contour
+  cvDrawContours(gray_picture,
+    seqT,
+    WHITE,
+    WHITE,
+    0, -1, 8, 0);
+
+  cvDrawContours(gray_picture,
+    seqT,
+    WHITE,
+    WHITE,
+    0, 50, 8, 0);
+
+  // 
+  cvDilate(gray_picture,
+    gray_picture,
+    0, 1);
+
+  cvErode(gray_picture,
+    gray_picture,
+    0, 1);
+
+  /// --------------------------- end find background ----------------------------
 
   /// ---------------------------------- Canny -----------------------------------
   // threshold for transfer color picture into gray
@@ -350,6 +320,7 @@ int main(int argc, char* argv[])
 
   /// ------------------------- finding pant contour ----------------------------
   // Find longest contour 
+  // contour direction - clockwise (CW)
   CvMemStorage* storageContourT = cvCreateMemStorage(0);
   contours = 0;
 
@@ -383,7 +354,6 @@ int main(int argc, char* argv[])
 
   /// --------------------- end finding pant contour ----------------------------
 
-
   /// --------------------- approximate pant ------------------------------------
 
   // find approximation polynome
@@ -409,95 +379,10 @@ int main(int argc, char* argv[])
   double k = 0.04;
 
   printf("Longest contour, App poly points %d %d\n", seqT->total, result->total);
-	std::vector<CvPoint>* points = getIntersections(gray_picture, CvPoint(0,0),CvPoint(gray_picture->width, gray_picture->height), seqT, 15, 2);
-	std::cout<<"intersections count "<<points->size()<<std::endl;
-	std::vector<CvPoint>::iterator point = points->begin();
-	cvLine(gray_picture,
-      CvPoint(0,0),
-      CvPoint(gray_picture->width, gray_picture->height),
-      WHITE,
-     2, CV_AA, 0);
-	cvCircle(gray_picture, *point, 50, WHITE, 5, 8, 0);
-	point++;
-	cvCircle(gray_picture, *point, 50, WHITE, 5, 8, 0);
-	 cvSaveImage("output/result2.jpg", gray_picture);
-  /*
-  // convexHull
-  CvSeq* hull2 = 0;
-  hull2 = cvConvexHull2(result, 0, CV_CLOCKWISE, 1);
-
-  printf("App poly, Hull points %d %d\n", result->total, hull2->total);
-
-  // Draw contour 
-  cvDrawContours(image,
-    hull2,
-    BLACK,
-    BLACK,
-    0, 20, 8, 0);
-
-  CvPoint pt10;
-
-  CvMemStorage* storage1 = cvCreateMemStorage(0);
-  CvMemStorage* storage2 = cvCreateMemStorage(0);
-  CvSeq* ptseq = cvCreateSeq(CV_SEQ_KIND_GENERIC | CV_32SC2, sizeof(CvContour),
-    sizeof(CvPoint), storage1);
-  CvSeq* hull;
-  CvSeq* defects;
-
-  // change approximation contour structure
-  for (int i = 0; i < result->total; i++)
-  {
-    CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result, i);
-    pt10.x = p->x;
-    pt10.y = p->y;
-    cvSeqPush(ptseq, &pt10);
-  }
-
-  // make convex hull
-  hull = cvConvexHull2(ptseq, 0, CV_CLOCKWISE, 0);
-  int hullcount = hull->total;
-
-  //find defects
-  defects = cvConvexityDefects(ptseq, hull, storage2);
-
-  //printf(" defect no %d \n", defects->total);
-
-  CvConvexityDefect* defectArray;
-
-  int j = 0;
-  //int m_nomdef=0;
-  // This cycle marks all defects of convexity of current contours.  
-  for (; defects; defects = defects->h_next)
-  {
-    int nomdef = defects->total; // defect amount  
-                                 //outlet_float( m_nomdef, nomdef );  
-
-                                 //printf(" defect no %d \n",nomdef);
-
-    if (nomdef == 0)
-      continue;
-
-    // Alloc memory for defect set.     
-    //fprintf(stderr,"malloc\n");  
-    defectArray = (CvConvexityDefect*)malloc(sizeof(CvConvexityDefect)*nomdef);
-
-    // Get defect set.  
-    //fprintf(stderr,"cvCvtSeqToArray\n");  
-    cvCvtSeqToArray(defects, defectArray, CV_WHOLE_SEQ);
-
-    // Draw marks for all defects.  
-    for (int i = 0; i < nomdef; i++)
-    {
-      //printf(" defect depth for defect %d %f \n", i, defectArray[i].depth);
-      cvLine(image, *(defectArray[i].start), *(defectArray[i].depth_point), WHITE, 10, CV_AA, 0);
-      cvCircle(image, *(defectArray[i].depth_point), 10, WHITE, 10, 8, 0);
-      cvCircle(image, *(defectArray[i].start), 10, WHITE, 10, 8, 0);
-      cvLine(image, *(defectArray[i].depth_point), *(defectArray[i].end), WHITE, 10, CV_AA, 0);
-    }
-  }
-  */
   /// ----------------- end approximate pants ------------------------------------
-    
+
+
+
   /// ----------------- draw min area rect around pants --------------------------
   CvBox2D rect_pants;
   CvPoint2D32f rect_pants_vtx[4];
@@ -510,15 +395,15 @@ int main(int argc, char* argv[])
   pt0.y = cvRound(rect_pants_vtx[3].y);
   for (i = 0; i < 4; i++)
   {
-
-    printf("rect_pants.x = ");
-    printf("%d", pt0.x);
-
-    printf("    rect_pants.y = ");
-    printf("%d\n", pt0.y);
-
     pt.x = cvRound(rect_pants_vtx[i].x);
     pt.y = cvRound(rect_pants_vtx[i].y);
+
+    printf("rect_pants.x = ");
+    printf("%d", pt.x);
+
+    printf("    rect_pants.y = ");
+    printf("%d\n", pt.y);
+
     cvLine(image,
       pt0,
       pt,
@@ -530,38 +415,496 @@ int main(int argc, char* argv[])
 
   /// ----------------- end draw min area rect around pant ----------------------
 
+  /// ----------------- find left upper corner of min area rect-----------------
+  pt0.x = cvRound(rect_pants_vtx[0].x);
+  pt0.y = cvRound(rect_pants_vtx[0].y);
+  // first corner - most right and lower - ***
+  //  +------+
+  //  |      |
+  //  |      |
+  //  |      |
+  //  |      |
+  //  +------***
+
+  // find most left and upper corner
+
+  // corner's sum of coordinates
+  // first value - sum of first corner coordinates
+  double point_sum = cvRound(rect_pants_vtx[0].x) + cvRound(rect_pants_vtx[0].y);
+
+  // index of left and upper corner
+  int corner_l_u = 0;
+  // index of right and upper corner
+  int corner_r_u = 0;
+
+  // find most left and upper corner
+  // corner_l_u
+  for (i = 0; i < 4; i++)
+  {
+    if (point_sum > cvRound(rect_pants_vtx[i].x) + cvRound(rect_pants_vtx[i].y))
+    {
+      pt0.x = cvRound(rect_pants_vtx[i].x);
+      pt0.y = cvRound(rect_pants_vtx[i].y);
+
+      point_sum = cvRound(rect_pants_vtx[i].x) + cvRound(rect_pants_vtx[i].y);
+      corner_l_u = i;
+    }
+  }
+
+  // find most right and upper corner
+  // corner_r_u
+  // this is prev or next corner of most left and upper
+
+  if (cvRound(rect_pants_vtx[corner_l_u + 1].x) > 
+          cvRound(rect_pants_vtx[corner_l_u - 1].x))
+  {
+    pt0.x = cvRound(rect_pants_vtx[corner_l_u + 1].x);
+    pt0.y = cvRound(rect_pants_vtx[corner_l_u + 1].y);
+    corner_r_u = corner_l_u + 1;
+  }
+  else
+  {
+    pt0.x = cvRound(rect_pants_vtx[corner_l_u -1].x);
+    pt0.y = cvRound(rect_pants_vtx[corner_l_u -1].y);
+    corner_r_u = corner_l_u - 1;
+  }
+  /// ------------- end find left upper corner of min area rect-----------------
+  
+  /// ------------- upper side of min area rect ---------------------------------
+  // calculate equations
+  // line from left/right upper corner of min area rect
+  // y = KU*x + BU
+  //
+  //       y1 - y2
+  // KU = ------------
+  //       x1 - x2
+  //
+  // BU = y1 - K*x1
+  // 1 - l_u
+  // 2 - r_u
+
+  float KU, BU;
+  KU = (rect_pants_vtx[corner_l_u].y - rect_pants_vtx[corner_r_u].y) /
+          (rect_pants_vtx[corner_l_u].x - rect_pants_vtx[corner_r_u].x);
+  BU = rect_pants_vtx[corner_l_u].y - KU * rect_pants_vtx[corner_l_u].x;
+
+  // x of left test point set to 0
+  // y - calculate
+  CvPoint Left_test = (0, 0);
+  // x of rigth point set image width 
+  CvPoint Right_test = (0, 0);
+
+  Left_test.y = cvRound(BU);
+  Right_test.x = (image->width);
+  Right_test.y = cvRound(KU*(image->width) + BU);
+
+  //draw left to right lines
+  cvLine(image,
+    Left_test,
+    Right_test,
+    BLUE,
+    5, CV_AA, 0);
+  /// ------------- end upper side of min area rect -----------------------------
+
+  /// ----------------- mark pants appr contour points in ROI--------------------
+  // ROI - left upper square of min area rect
+  // we will find right upper side of contour
+
+  // border of ROI
+  // X must be less then x_lim = l_u.x + rect_width*0.2
+  // Y must be less then y_lim = l_u.y + rect_width*0.2
+
+  int x_lim, y_lim, rect_width;
+
+  rect_width = cvRound (rect_pants_vtx[corner_r_u].x - rect_pants_vtx[corner_l_u].x);
+  x_lim = cvRound(rect_pants_vtx[corner_l_u].x + cvRound(rect_width * 0.2));
+  y_lim = cvRound(rect_pants_vtx[corner_l_u].y + cvRound(rect_width * 0.2));
+
+  printf("x_lim = ");
+  printf("%d\n", x_lim);
+  printf("y_lim = ");
+  printf("%d\n", y_lim);
+
+  // set tpmPoint to (0, 0)    
+  CvPoint pt10 = (0, 0);
+  
+  // temp contour 
+  CvMemStorage* storage12 = cvCreateMemStorage(0);
+  CvSeq* result_copy = cvCreateSeq(CV_SEQ_KIND_GENERIC | CV_32SC2, sizeof(CvContour),
+    sizeof(CvPoint), storage12);
+  // number of  points in ROI
+  int number_ROI_points = 0;
+  
+  // select points in ROI and set other points in lowest right corner of image
+  // create additional structure from contour with this two sorts of point
+  for (int i = 0; i < result->total; i++)
+  {
+    CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result, i);
+    pt10.x = p->x;
+    pt10.y = p->y;
+
+    if ((pt10.x > x_lim) || (pt10.y > y_lim))
+    {
+      pt10.x = image->width;
+      pt10.y = image->height;
+     }
+    else
+    {
+      printf("i = ");
+      printf("%d", i);
+      printf("; pt10.x = ");
+      printf("%d", pt10.x);
+      printf("; pt10.y = ");
+      printf("%d\n", pt10.y);
+      number_ROI_points++;
+      cvSeqPush(result_copy, &pt10);
+
+    }
+
+    // draw right point circle
+    cvCircle(image,
+      pt10,
+      20,
+      BLUE,
+      30, 8, 0);
+
+  }
+
+  printf("result_copy size=%d\n", result_copy->total);
+
+  /// ----------------- end mark pants appr contour points in ROI ----------------
+
+  /// ----------------- mark left upper angle of pants ---------------------------
+  // left upper angle of pants
+  CvPoint pants_l_u = (0, 0);
+  pants_l_u.x = image->width;
+  pants_l_u.y = image->height;
+  int point_index = 0;
+  int exit_flag = 0;
+
+  if (number_ROI_points == 1)
+  {
+    CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, 1);
+      pants_l_u.x = p->x;
+      pants_l_u.y = p->y;
+  }
+  else
+  {
+    while ((number_ROI_points != 0) && (exit_flag != 1))
+    {
+      // hightest point
+      for (int i = 0; i < result_copy->total; i++)
+      {
+        CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, i);
+        if (p->y < pants_l_u.y)
+        {
+          pants_l_u.x = p->x;
+          pants_l_u.y = p->y;
+          point_index = i;
+        }
+      }
+
+      // is hightest point most left point?
+      // not_left - flag 
+      // if flag not change - our highest point is most left point
+      int not_left = 0;
+      int j = 0;
+      while ((j < result_copy->total) || (not_left != 0))
+      {
+        CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, i);
+
+        // point have X more or equal to highest point's X 
+        if (p->x <= pants_l_u.x)
+        {
+          if (point_index != i)
+            // this is not my highest point
+            // change value of highest point to left lowest corner of image
+          {
+            //            result_copy[j].x = 0;
+            //            result_copy[j].y = image->height;
+            point_index = 0;
+            number_ROI_points--;
+            not_left = 1;
+          }
+
+        }
+        j++;
+      }
+
+      // find right and upper corner of pants
+      // exit from loop
+      if (not_left == 0)
+      {
+        exit_flag = 1;
+      }
+
+    }
+  }
+
+    // draw right point circle
+    cvCircle(image,
+      pants_l_u,
+      50,
+      RED,
+      30, 8, 0);
+  
+  /// ----------------- end mark rght upper angle of pants -----------------------
+
+
+  /// ----------------- define G size (lowest point of pant) ---------------------
+  
+   // set side lower points
+   // left point set to rigth upper point
+    CvPoint SideLeft = (image->width, image->height);
+    // rigth point set to left lower point 
+    CvPoint SideRight = (0, 0);
+    // set tpmPoint to (0, 0)    
+    CvPoint* tmpPoint = (0, 0);
+    // poiner for left/right point in contour
+    int pointIndex = 0;
+
+    // pant appr rect, not min square rect
+    CvRect PantRect;
+    
+    PantRect = cvBoundingRect(result, 0);
+
+    // find most left point below 75% of high of appr rect
+    // result - contour which has been get with approximation
+    //          longest contour of image
+
+    for (int i = 0; i < result->total; i++)
+    {
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
+      if (tmpPoint->y >(PantRect.y + cvRound(PantRect.height*0.75)))
+      {
+        if (tmpPoint->x < SideLeft.x)
+        {
+          SideLeft.x = tmpPoint->x;
+          SideLeft.y = tmpPoint->y;
+          pointIndex = i;
+        }
+      }
+    }
+    // draw left point circle
+    cvCircle(image, 
+      SideLeft, 
+      50, 
+      BLUE, 
+      15, 8, 0);
+
+    // find most right point below 75%
+    for (int i = 0; i < result->total; i++)
+    {
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
+      if (tmpPoint->y >(PantRect.y + cvRound(PantRect.height*0.75)))
+      {
+        if (tmpPoint->x > SideRight.x)
+        {
+          SideRight.x = tmpPoint->x;
+          SideRight.y = tmpPoint->y;
+          pointIndex = i;
+        }
+      }
+    }
+    // draw left point circle
+    cvCircle(image, 
+      SideRight, 
+      50, 
+      BLUE, 
+      5, 8, 0);
+
+    // calculate line equation
+    // line from left/right point 
+    // y = K*x + B
+    //
+    //       y1 - y2
+    // K = ------------
+    //       x1 - x2
+    //
+    // B = y1 - K*x1
+    // 1 - sideLeft
+    // 2 - sideRight
+
+    float K, B;
+    K = (SideLeft.y - SideRight.y) / (SideLeft.x - SideRight.x);
+    B = SideLeft.y - K * SideLeft.x;
+
+    //draw left and right lines
+    cvLine(image,
+      SideRight,
+      SideLeft,
+      BLUE,
+      40, CV_AA, 0);
+
+    // calculate G
+    double G = 0;
+    G = sqrt(pow((SideLeft.x - SideRight.x), 2) +
+      pow((SideLeft.y - SideRight.y), 2)) / unit;
+
+    printf("G = ");
+    printf("%f", G);
+    printf(" inch\n");
+  /// ------------- end define G size (lowest point of pant) ---------------------
+
+  /// ---------------------- find crotch point -----------------------------------
+  // find most right point of pant
+  // result - contour which has been get with approximation
+  //          longest contour of image
+    CvPoint CrotchPoint = (0, 0);
+
+    for (int i = 0; i < result->total; i++)
+    {
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
+      if (tmpPoint->x > CrotchPoint.x)
+        {
+          CrotchPoint.x = tmpPoint->x;
+          CrotchPoint.y = tmpPoint->y;
+          pointIndex = i;
+        }
+    }
+
+    // draw left point circle
+    cvCircle(image,
+      CrotchPoint,
+      50,
+      BLUE,
+      15, 8, 0);
+  /// ---------------------- end find crotch point -------------------------------
+
+  /// ---------------------- calculate length ot contour segment -----------------
+  // result - work contour
+  // StartPoint - point in contour from which we start
+  // lenght -  current length of segment in pixels
+  // PointerContour - index of contour points
+  // CW - direction of contour. CW - clockwise
+    int CW = 1;
+    int lenght = 720;
+    CvPoint StartPoint = (0, 0);
+
+    // set StartPoint value
+    StartPoint.x = CrotchPoint.x;
+    StartPoint.y = CrotchPoint.y;
+
+    // internal variable
+    // lengthTmp - current segment lenght
+    int lengthTmp = 0;
+    int CountourStep = 0;
+
+  // clockwise or opposite
+    if (CW == 1)
+    {
+      CountourStep = 1;
+    }
+    else
+    {
+      CountourStep = -1;
+    }
+   
+    // find most start point 
+    // result - contour which has been get with approximation
+    //          longest contour of image
+
+    for (int i = 0; i < result->total; i++)
+    {
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
+      if ((tmpPoint->x) == (StartPoint.x))
+      {
+        if ((tmpPoint->y) == (StartPoint.y))
+        {
+          pointIndex = i;
+        }
+      }
+    }
+
+    // draw start point circle
+    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+    StartPoint.x = tmpPoint->x;
+    StartPoint.y = tmpPoint->y;
+
+    cvCircle(image,
+      StartPoint,
+      50,
+      WHITE,
+      5, 8, 0);
+
+    pointIndex = pointIndex + 1;
+    int finalPoint = 0;
+    // find contour segment 
+    while ((lengthTmp < lenght) && (finalPoint == 0))
+    {
+      // read next point
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+
+      printf("pointIndex = ");
+      printf("%d", pointIndex);
+      printf("\n");
+
+
+      // calculate part of contour lehgtn
+      int lengthPart = 0;
+      lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
+        pow((StartPoint.y - (tmpPoint->y)), 2)));
+
+      // calculate current segment length
+        if ((lengthTmp + lengthPart) > lenght)
+          // calculate part of current part of contour
+        {
+          // calculate line equation
+          // line from StartPoint to tmpPoint
+          printf("4");
+
+          float Ktmp, Btmp;
+          Ktmp = static_cast <float>((StartPoint.y - (tmpPoint->y))) / (StartPoint.x - (tmpPoint->x));
+          Btmp = static_cast <float>(StartPoint.y) - K * StartPoint.x;
+          
+          // calculate length of current part
+          // as % from curent part
+   //       float j = 0.0;
+          float j = static_cast <float> ((lenght - lengthTmp))/lengthPart ;
+          lengthPart = lenght - lengthTmp;
+          
+          // calculate new tmpPoint
+          tmpPoint->x = cvRound(StartPoint.x + j*(StartPoint.x - (tmpPoint->x)));
+          tmpPoint->y = cvRound(StartPoint.y + j*(StartPoint.y - (tmpPoint->y)));
+
+          // calculate new length of current part
+          lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
+            pow((StartPoint.y - (tmpPoint->y)), 2)));
+
+          finalPoint = 1;
+        }
+    // add current part of contour to segment length
+      lengthTmp = lengthTmp + lengthPart;
+
+      StartPoint.x = tmpPoint->x;
+      StartPoint.y = tmpPoint->y;
+      pointIndex = pointIndex + CountourStep;
+    }
+
+    // final point in StartPoint
+
+    // draw finish point circle
+    cvCircle(image,
+      StartPoint,
+      50,
+      RED,
+      15, 8, 0);
+    
+  /// ------------------ end calculate length ot contour segment -----------------
+
 
   /// -------------------------------- Display windows ---------------------------
   // resize picture
 
   //cvSaveImage("src.jpg", image, 0);
 
-  //cvSaveImage("yellow.jpg", yellow_picture, 0);
-	Value root;
-	root["waistband"] = Value(0);
-	root["crotch_length"] = Value(0);
-	root["crotch_length_front"]= Value(0);
-	root["crotch_length_rear"]= Value(0);
-	root["inseam_left"] = Value(0);
-	root["thigh_girth_left_horizontal"] = Value(0);
-	root["knee_girth_left"] = Value(0);
-	root["dist_waistband_knee"] = Value(0);
-	root["crotch_knee_height"] = Value(0);
-	root["sideseam_waist_left"] = Value(0);
-	std::cout<<root;
-	
-
   // Create a window to display results
   cvNamedWindow("original", CV_WINDOW_NORMAL);
-  cvNamedWindow("yellow", CV_WINDOW_NORMAL);
   cvNamedWindow("gray", CV_WINDOW_NORMAL);
-  cvNamedWindow("roi", CV_WINDOW_NORMAL);
 
   // Show images
   cvShowImage("original", image);
   cvShowImage("gray", gray_picture);
-  cvShowImage("roi", img_roi);
-
 
   // --------------------------------- Clear memory ------------------------------
   // От кого я особенно ненавижу - так ето вас всех!
@@ -573,7 +916,6 @@ int main(int argc, char* argv[])
   // release memory
   cvReleaseImage(&image);
   cvReleaseImage(&gray_picture);
-  cvReleaseImage(&img_roi);
 
   // Delete windows
   cvDestroyAllWindows();
