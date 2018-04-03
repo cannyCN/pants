@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
 {
 
   // Load an image
-  char* filename = argc >= 2 ? argv[1] : "test.jpg";
+  const char* filename = argc >= 2 ? const_cast<char*>(argv[1]) : "test.jpg";
   image = cvLoadImage(filename, 1);
   printf("[i] image: %s\n", filename);
   assert(image != 0);
@@ -611,12 +611,12 @@ int main(int argc, char* argv[])
       int j = 0;
       while ((j < result_copy->total) || (not_left != 0))
       {
-        CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, i);
+        CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, j);
 
         // point have X more or equal to highest point's X 
         if (p->x <= pants_l_u.x)
         {
-          if (point_index != i)
+          if (point_index != j)
             // this is not my highest point
             // change value of highest point to left lowest corner of image
           {
