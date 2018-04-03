@@ -25,6 +25,136 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
+CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght){
+	
+ /// ---------------------- calculate length ot contour segment -----------------
+  // result - work contour
+  // StartPoint - point in contour from which we start
+  // lenght -  current length of segment in pixels
+  // PointerContour - index of contour points
+  // CW - direction of contour. CW - clockwise
+    int CW = 1;
+   // int lenght = 720;
+	CvSeq* result = contour;
+    CvPoint StartPoint = (0, 0);
+
+    // set StartPoint value
+    StartPoint.x = point.x;
+    StartPoint.y = point.y;
+
+    // internal variable
+    // lengthTmp - current segment lenght
+    int lengthTmp = 0;
+    int CountourStep = 0;
+
+  // clockwise or opposite
+    if (CW == 1)
+    {
+      CountourStep = 1;
+    }
+    else
+    {
+      CountourStep = -1;
+    }
+   
+    // find most start point 
+    // result - contour which has been get with approximation
+    //          longest contour of image
+	CvPoint* tmpPoint;
+	int pointIndex;
+    for (int i = 0; i < result->total; i++)
+    {
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
+      if ((tmpPoint->x) == (StartPoint.x))
+      {
+        if ((tmpPoint->y) == (StartPoint.y))
+        {
+          pointIndex = i;
+        }
+      }
+    }
+
+    // draw start point circle
+    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+    StartPoint.x = tmpPoint->x;
+    StartPoint.y = tmpPoint->y;
+
+    cvCircle(image,
+      StartPoint,
+      50,
+      WHITE,
+      5, 8, 0);
+
+    pointIndex = pointIndex + 1;
+    int finalPoint = 0;
+    // find contour segment 
+    while ((lengthTmp < lenght) && (finalPoint == 0))
+    {
+      // read next point
+      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+
+      printf("pointIndex = ");
+      printf("%d", pointIndex);
+      printf("\n");
+
+
+      // calculate part of contour lehgtn
+      int lengthPart = 0;
+      lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
+        pow((StartPoint.y - (tmpPoint->y)), 2)));
+
+      // calculate current segment length
+        if ((lengthTmp + lengthPart) > lenght)
+          // calculate part of current part of contour
+        {
+          // calculate line equation
+          // line from StartPoint to tmpPoint
+          printf("4");
+
+          float Ktmp, Btmp;
+          Ktmp = static_cast <float>((StartPoint.y - (tmpPoint->y))) / (StartPoint.x - (tmpPoint->x));
+          Btmp = static_cast <float>(StartPoint.y) - Ktmp * StartPoint.x;
+          
+          // calculate length of current part
+          // as % from curent part
+   //       float j = 0.0;
+          float j = static_cast <float> ((lenght - lengthTmp))/lengthPart ;
+          lengthPart = lenght - lengthTmp;
+          
+          // calculate new tmpPoint
+          tmpPoint->x = cvRound(StartPoint.x + j*(StartPoint.x - (tmpPoint->x)));
+          tmpPoint->y = cvRound(StartPoint.y + j*(StartPoint.y - (tmpPoint->y)));
+
+          // calculate new length of current part
+          lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
+            pow((StartPoint.y - (tmpPoint->y)), 2)));
+
+          finalPoint = 1;
+        }
+    // add current part of contour to segment length
+      lengthTmp = lengthTmp + lengthPart;
+
+      StartPoint.x = tmpPoint->x;
+      StartPoint.y = tmpPoint->y;
+      pointIndex = pointIndex + CountourStep;
+    }
+
+    // final point in StartPoint
+
+    // draw finish point circle
+    cvCircle(image,
+      StartPoint,
+      50,
+      RED,
+      15, 8, 0);
+    
+  /// ------------------ end calculate length ot contour segment -----------------
+	
+return StartPoint;
+}
+
+
+
 int main(int argc, char* argv[])
 {
 
@@ -612,7 +742,6 @@ int main(int argc, char* argv[])
       while ((j < result_copy->total) || (not_left != 0))
       {
         CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, j);
-
         // point have X more or equal to highest point's X 
         if (p->x <= pants_l_u.x)
         {
@@ -771,126 +900,13 @@ int main(int argc, char* argv[])
       15, 8, 0);
   /// ---------------------- end find crotch point -------------------------------
 
-  /// ---------------------- calculate length ot contour segment -----------------
-  // result - work contour
-  // StartPoint - point in contour from which we start
-  // lenght -  current length of segment in pixels
-  // PointerContour - index of contour points
-  // CW - direction of contour. CW - clockwise
-    int CW = 1;
-    int lenght = 720;
-    CvPoint StartPoint = (0, 0);
-
-    // set StartPoint value
-    StartPoint.x = CrotchPoint.x;
-    StartPoint.y = CrotchPoint.y;
-
-    // internal variable
-    // lengthTmp - current segment lenght
-    int lengthTmp = 0;
-    int CountourStep = 0;
-
-  // clockwise or opposite
-    if (CW == 1)
-    {
-      CountourStep = 1;
-    }
-    else
-    {
-      CountourStep = -1;
-    }
-   
-    // find most start point 
-    // result - contour which has been get with approximation
-    //          longest contour of image
-
-    for (int i = 0; i < result->total; i++)
-    {
-      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
-      if ((tmpPoint->x) == (StartPoint.x))
-      {
-        if ((tmpPoint->y) == (StartPoint.y))
-        {
-          pointIndex = i;
-        }
-      }
-    }
-
-    // draw start point circle
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
-    StartPoint.x = tmpPoint->x;
-    StartPoint.y = tmpPoint->y;
-
-    cvCircle(image,
-      StartPoint,
-      50,
-      WHITE,
-      5, 8, 0);
-
-    pointIndex = pointIndex + 1;
-    int finalPoint = 0;
-    // find contour segment 
-    while ((lengthTmp < lenght) && (finalPoint == 0))
-    {
-      // read next point
-      tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
-
-      printf("pointIndex = ");
-      printf("%d", pointIndex);
-      printf("\n");
-
-
-      // calculate part of contour lehgtn
-      int lengthPart = 0;
-      lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
-        pow((StartPoint.y - (tmpPoint->y)), 2)));
-
-      // calculate current segment length
-        if ((lengthTmp + lengthPart) > lenght)
-          // calculate part of current part of contour
-        {
-          // calculate line equation
-          // line from StartPoint to tmpPoint
-          printf("4");
-
-          float Ktmp, Btmp;
-          Ktmp = static_cast <float>((StartPoint.y - (tmpPoint->y))) / (StartPoint.x - (tmpPoint->x));
-          Btmp = static_cast <float>(StartPoint.y) - K * StartPoint.x;
-          
-          // calculate length of current part
-          // as % from curent part
-   //       float j = 0.0;
-          float j = static_cast <float> ((lenght - lengthTmp))/lengthPart ;
-          lengthPart = lenght - lengthTmp;
-          
-          // calculate new tmpPoint
-          tmpPoint->x = cvRound(StartPoint.x + j*(StartPoint.x - (tmpPoint->x)));
-          tmpPoint->y = cvRound(StartPoint.y + j*(StartPoint.y - (tmpPoint->y)));
-
-          // calculate new length of current part
-          lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
-            pow((StartPoint.y - (tmpPoint->y)), 2)));
-
-          finalPoint = 1;
-        }
-    // add current part of contour to segment length
-      lengthTmp = lengthTmp + lengthPart;
-
-      StartPoint.x = tmpPoint->x;
-      StartPoint.y = tmpPoint->y;
-      pointIndex = pointIndex + CountourStep;
-    }
-
-    // final point in StartPoint
-
-    // draw finish point circle
-    cvCircle(image,
-      StartPoint,
-      50,
-      RED,
-      15, 8, 0);
-    
-  /// ------------------ end calculate length ot contour segment -----------------
+ CvPoint StartPoint = contourIterate(result, CrotchPoint, K);
+	
+	
+	
+	
+	
+	
 
 
   /// -------------------------------- Display windows ---------------------------
