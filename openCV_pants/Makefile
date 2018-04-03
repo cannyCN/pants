@@ -15,6 +15,9 @@ SHARED_LIBS=-ldl -lm -lpthread -lrt -ljasper -ljpeg -lpng -ltiff -lz -lgtk-x11-2
 
 devmake: pants.cpp
 	$(CC) pants.cpp `pkg-config --cflags --libs opencv` /usr/local/lib/libJsonBox.a
+	
+d: pants.cpp
+	$(CC) -g pants.cpp `pkg-config --cflags --libs opencv` /usr/local/lib/libJsonBox.a
 
 static:  $(SOURCE)
 	g++ $(SOURCE) -o main  $(OPENCV_FLAGS) $(OPENCV_STATIC_PATH) /usr/lib/gcc/x86_64-linux-gnu/5/libstdc++.a $(BASIC_LIBS) $(THIRD_PART_LIBS_PATH)  $(SHARED_LIBS)
