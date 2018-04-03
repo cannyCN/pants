@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <vector>
 #include <iostream>
+#include <JsonBox.h>
+
+using namespace JsonBox;
 
 // define matrix for picture
 IplImage* image = 0;
@@ -93,6 +96,11 @@ std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSe
 	delete pointst;
 	return points;
 
+}
+
+CvPoint contourIterate(CvSeq contour, CvPoint point, float num){
+	CvPoint result = new CvPoint(0,0);
+		return result;
 }
 
 int main(int argc, char* argv[])
@@ -529,6 +537,19 @@ int main(int argc, char* argv[])
   //cvSaveImage("src.jpg", image, 0);
 
   //cvSaveImage("yellow.jpg", yellow_picture, 0);
+	Value root;
+	root["waistband"] = Value(0);
+	root["crotch_length"] = Value(0);
+	root["crotch_length_front"]= Value(0);
+	root["crotch_length_rear"]= Value(0);
+	root["inseam_left"] = Value(0);
+	root["thigh_girth_left_horizontal"] = Value(0);
+	root["knee_girth_left"] = Value(0);
+	root["dist_waistband_knee"] = Value(0);
+	root["crotch_knee_height"] = Value(0);
+	root["sideseam_waist_left"] = Value(0);
+	std::cout<<root;
+	
 
   // Create a window to display results
   cvNamedWindow("original", CV_WINDOW_NORMAL);
