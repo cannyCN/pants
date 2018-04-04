@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <iostream>
+#include <opencv2/imgcodecs.hpp>
+
 // define matrix for picture
 IplImage* image = 0;
 IplImage* gray_picture = 0;
@@ -153,6 +156,74 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght){
 return StartPoint;
 }
 
+
+std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSeq* contour, int treshold = 10, int linewidth = 2){
+	  IplImage *img_contours = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
+	cvSet(img_contours, 0);
+	cvDrawContours(img_contours,
+		   contour,
+		   WHITE,
+		   BLACK,
+    	   255,linewidth , CV_AA, 0);
+	IplImage *img_line = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
+	cvSet(img_line, 0);
+	
+	cvLine(img_line,
+      a,
+      b,
+      WHITE,
+     linewidth, CV_AA, 0);
+	
+	cv::Mat res;
+	std::vector<CvPoint> *pointst = new std::vector<CvPoint>();
+	bitwise_and(cv::cvarrToMat(img_contours),cv::cvarrToMat(img_line), res); 
+	cvSaveImage("output/result3.jpg", img_line);
+	cvSaveImage("output/result4.jpg", img_contours);
+	imwrite("output/result.jpg",res);
+	for(int i =0 ;i <res.rows;i++)
+		 {
+			 for(int j=0; j<res.cols; j++)
+			 {
+				int rv = res.at<uchar>(i,j);
+			   if( rv > 0)
+			   {
+
+				   pointst->push_back(CvPoint(j,i));
+				   
+
+			   }
+				 
+				 
+				 
+
+			 }
+		 }
+	
+	std::vector<CvPoint> *points = new std::vector<CvPoint>();
+	for(std::vector<CvPoint>::iterator it = pointst->begin(); it < pointst->end(); it++){
+		CvPoint p = CvPoint((*it).x, (*it).y);
+		CvPoint ptmp = CvPoint((*it).x, (*it).y);
+		int counter = 1;
+		
+		for(std::vector<CvPoint>::iterator it2 = pointst->begin(); it2 < pointst->end(); it2++){
+			CvPoint diff = CvPoint(p.x - (*it2).x,p.y-(*it2).y);
+			
+              if (cv::sqrt(diff.x*diff.x + diff.y*diff.y) < treshold){
+				  ptmp =CvPoint(ptmp.x + (*it2).x,ptmp.y+(*it2).y);
+				  counter++;
+				  pointst->erase(it2);
+				  it2--;
+			  }
+		}
+		
+		ptmp =CvPoint(ptmp.x / counter,ptmp.y/counter);
+points->push_back(ptmp);
+		std::cout<<ptmp.x<<" "<<ptmp.y<<std::endl;
+	}
+	delete pointst;
+	return points;
+
+}
 
 
 int main(int argc, char* argv[])
@@ -743,6 +814,7 @@ int main(int argc, char* argv[])
       {
         CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, j);
         // point have X more or equal to highest point's X 
+		  printf ("%d %d %d\n", j, point_index, result_copy->total);
         if (p->x <= pants_l_u.x)
         {
           if (point_index != j)
