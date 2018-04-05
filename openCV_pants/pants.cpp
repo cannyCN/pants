@@ -2,6 +2,7 @@
 #include <highgui.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <vector>
 
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
@@ -996,10 +997,22 @@ int main(int argc, char* argv[])
   float BE = ERight.y - KU * ERight.x;
 
 //  CvPoint ELeft = insert function there
+	
 
- /* CvPoint ELeft = (0, 0);
-  ELeft.y = cvRound(KU*ELeft.x + BE);*/
-  
+  CvPoint ELeft = (0, 0);
+  ELeft.y = cvRound(KU*ELeft.x + BE);
+	std::vector<CvPoint>* points =getIntersections(image, ELeft, ERight, seqT);
+	
+	ELeft = points->front();
+	
+  for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
+	  //printf("%d ______\n", ELeft.x);
+	  if (point->x<ELeft.x){
+		  ELeft = *point;
+	  }
+  }
+	printf("%d %d %d %d\n",ELeft.x, ELeft.y, ERight.x, ERight.y );
+	//delete(points);
   cvCircle(image,
       ELeft,
       50,
@@ -1032,10 +1045,18 @@ int main(int argc, char* argv[])
 
   //  CvPoint FLeft = insert function there
 
-  /* CvPoint FRight = (0, 0);
+   CvPoint FRight = (0, 0);
    FRight.x = image->width;
-   FRight.y = cvRound(KU*FRight.x + BF);*/
-
+   FRight.y = cvRound(KU*FRight.x + BF);
+	points =getIntersections(image, FLeft, FRight, seqT);
+	FRight = points->front();
+  for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
+	  if (point->x>FRight.x){
+		  FRight = *point;
+	  }
+  }
+	printf("%d %d %d %d\n",FLeft.x, FLeft.y, FRight.x, FRight.y );
+delete(points);
   cvCircle(image,
     FRight,
     50,
@@ -1051,9 +1072,10 @@ int main(int argc, char* argv[])
 
   float F = sqrt(pow((FLeft.x - FRight.x), 2) +
     pow((FLeft.y - FRight.y), 2)) / unit;
+	 
 
   printf("F = ");
-  printf("%f", E);
+  printf("%f", F);
   printf(" inch\n");
 
   /// --------------------------- End find F -------------------------------------
@@ -1069,10 +1091,18 @@ int main(int argc, char* argv[])
 
   //  CvPoint DLeft = insert function there
 
- /* CvPoint DRight = (0, 0);
+  CvPoint DRight = (0, 0);
   DRight.x = image->width;
-  DRight.y = cvRound(KU*DRight.x + BD);*/
+  DRight.y = cvRound(KU*DRight.x + BD);
 
+	 points =getIntersections(image, DLeft, DRight, seqT);
+	DRight = points->front();
+  for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
+	  if (point->x>DRight.x){
+		  DRight = *point;
+	  }
+  }
+	delete(points);
   cvCircle(image,
     DRight,
     50,
@@ -1090,7 +1120,7 @@ int main(int argc, char* argv[])
     pow((DLeft.y - DRight.y), 2)) / unit;
 
   printf("D = ");
-  printf("%f", E);
+  printf("%f", D);
   printf(" inch\n");
 
   /// --------------------------- End find F -------------------------------------
@@ -1098,7 +1128,7 @@ int main(int argc, char* argv[])
   /// -------------------------------- Display windows ---------------------------
   // resize picture
 
-  //cvSaveImage("src.jpg", image, 0);
+  cvSaveImage("src.jpg", image, 0);
 
   // Create a window to display results
   cvNamedWindow("original", CV_WINDOW_NORMAL);
