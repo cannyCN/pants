@@ -16,9 +16,9 @@ IplImage* HSB_picture = 0;
 // variables
 double unit = 0.;
 
-// Object size in mm 90*90
-double square_width = 90.;
-double square_high = 90.;
+// Object size in inch 3*3
+double square_width = 3 * 25.4;
+double square_high = 3 * 25.4;
 
 // define colors
 // [R, G, B]
@@ -29,22 +29,20 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
+/// ---------------------- calculate length ot contour segment -----------------
 CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
 
-  /// ---------------------- calculate length ot contour segment -----------------
   // result - work contour
-  // StartPoint - point in contour from which we start
+  // pointStart - point in contour from which we start
   // lenght -  current length of segment in pixels
   // PointerContour - index of contour points
   // CW - direction of contour. CW - clockwise
-  // int CW = 1;
-  // int lenght = 720;
   CvSeq* result = contour;
-  CvPoint StartPoint = (0, 0);
+  CvPoint pointStart = (0, 0);
 
-  // set StartPoint value
-  StartPoint.x = point.x;
-  StartPoint.y = point.y;
+  // set pointStart value
+  pointStart.x = point.x;
+  pointStart.y = point.y;
 
   // internal variable
   // lengthTmp - current segment lenght
@@ -62,16 +60,14 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
   }
 
   // find most start point 
-  // result - contour which has been get with approximation
-  //          longest contour of image
-  CvPoint* tmpPoint;
+  CvPoint* pointTmp;
   int pointIndex;
   for (int i = 0; i < result->total; i++)
   {
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
-    if ((tmpPoint->x) == (StartPoint.x))
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, i);
+    if ((pointTmp->x) == (pointStart.x))
     {
-      if ((tmpPoint->y) == (StartPoint.y))
+      if ((pointTmp->y) == (pointStart.y))
       {
         pointIndex = i;
       }
@@ -79,56 +75,49 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
   }
 
   // draw start point circle
-  tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
-  StartPoint.x = tmpPoint->x;
-  StartPoint.y = tmpPoint->y;
+  pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+  pointStart.x = pointTmp->x;
+  pointStart.y = pointTmp->y;
 
   cvCircle(image,
-    StartPoint,
+    pointStart,
     50,
     WHITE,
     5, 8, 0);
-
 
   /// 
     CvPoint ttt;
   ///
 
-
-
-  pointIndex = pointIndex + 1;
-  int finalPoint = 0;
+  pointIndex = pointIndex + CountourStep;
+  int pointFinish = 0;
   // find contour segment 
-  while ((lengthTmp < lenght) && (finalPoint == 0))
+  while ((lengthTmp < lenght) && (pointFinish == 0))
   {
     // read next point
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, pointIndex);
 
     //printf("pointIndex = ");
     //printf("%d", pointIndex);
     //printf("\n");
     
     /// draw line 
-    ttt.x = tmpPoint->x;
-    ttt.y = tmpPoint->y;
-    cvLine(image, StartPoint, ttt, WHITE, 15, 8, 0);
+    ttt.x = pointTmp->x;
+    ttt.y = pointTmp->y;
+    cvLine(image, pointStart, ttt, WHITE, 15, 8, 0);
     ///
 
     // calculate part of contour lehgtn
     int lengthPart = 0;
-    lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
-      pow((StartPoint.y - (tmpPoint->y)), 2)));
+    lengthPart = cvRound(sqrt(pow((pointStart.x - (pointTmp->x)), 2) +
+      pow((pointStart.y - (pointTmp->y)), 2)));
 
     // calculate current segment length
     if ((lengthTmp + lengthPart) > lenght)
       // calculate part of current part of contour
     {
       // calculate line equation
-      // line from StartPoint to tmpPoint
-
-      float Ktmp, Btmp;
-      Ktmp = static_cast <float>((StartPoint.y - (tmpPoint->y))) / (StartPoint.x - (tmpPoint->x));
-      Btmp = static_cast <float>(StartPoint.y) - Ktmp * StartPoint.x;
+      // line from pointStart to pointTmp
 
       // calculate length of current part
       // as % from curent part
@@ -136,40 +125,38 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
       float j = static_cast <float> ((lenght - lengthTmp)) / lengthPart;
       lengthPart = lenght - lengthTmp;
 
-      // calculate new tmpPoint
-      tmpPoint->x = cvRound(StartPoint.x + j*(StartPoint.x - (tmpPoint->x)));
-      tmpPoint->y = cvRound(StartPoint.y + j*(StartPoint.y - (tmpPoint->y)));
+      // calculate new pointTmp
+      pointTmp->x = cvRound(pointStart.x - j*(pointStart.x - (pointTmp->x)));
+      pointTmp->y = cvRound(pointStart.y - j*(pointStart.y - (pointTmp->y)));
 
       // calculate new length of current part
-      lengthPart = cvRound(sqrt(pow((StartPoint.x - (tmpPoint->x)), 2) +
-        pow((StartPoint.y - (tmpPoint->y)), 2)));
+      lengthPart = cvRound(sqrt(pow((pointStart.x - (pointTmp->x)), 2) +
+        pow((pointStart.y - (pointTmp->y)), 2)));
 
-      finalPoint = 1;
+      pointFinish = 1;
     }
     // add current part of contour to segment length
     lengthTmp = lengthTmp + lengthPart;
 
-    StartPoint.x = tmpPoint->x;
-    StartPoint.y = tmpPoint->y;
+    pointStart.x = pointTmp->x;
+    pointStart.y = pointTmp->y;
     pointIndex = pointIndex + CountourStep;
   }
 
-  // final point in StartPoint
+  // final point in pointStart
 
   // draw finish point circle
   cvCircle(image,
-    StartPoint,
+    pointStart,
     50,
     RED,
     15, 8, 0);
 
-  /// ------------------ end calculate length ot contour segment -----------------
-
-  return StartPoint;
+  return pointStart;
 }
+/// ------------------ end calculate length ot contour segment -----------------
 
-
-
+/// ------------------ calculate intersection line and contour -----------------
 std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSeq* contour, int treshold = 10, int linewidth = 2){
 	  IplImage *img_contours = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
 	cvSet(img_contours, 0);
@@ -202,13 +189,8 @@ std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSe
 			   {
 
 				   pointst->push_back(CvPoint(j,i));
-				   
 
 			   }
-				 
-				 
-				 
-
 			 }
 		 }
 	
@@ -235,8 +217,110 @@ points->push_back(ptmp);
 	}
 	delete pointst;
 	return points;
-
 }
+/// -------------- end calculate intersection line and contour -----------------
+
+/// -------------------- segment length function ---------------------------
+int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) {
+
+  // calculate length of contour from pointStart to pointFinish
+  // cont - work contour
+  // pointStart - point in contour from which we start
+  // pointFinish - point in contour from which we start
+  // CW - direction of contour. CW - clockwise = 1
+  CvSeq* cont = contour;
+  CvPoint pointStart = (0, 0);
+  CvPoint pointFinish = (0, 0);
+
+  // set points value
+  pointStart.x = Start.x;
+  pointStart.y = Start.y;
+  pointFinish.x = Finish.x;
+  pointFinish.y = Finish.y;
+
+  // internal variable
+  // lengthTmp - current segment lenght
+  int lengthTmp = 0;
+  int CountourStep = CW;
+
+  // find start point 
+  CvPoint* pointTmp;
+  int pointStartIndex = 0;
+  for (int i = 0; i < cont->total; i++)
+  {
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, cont, i);
+    if ((pointTmp->x) == (pointStart.x))
+    {
+      if ((pointTmp->y) == (pointStart.y))
+      {
+        pointStartIndex = i;
+      }
+    }
+  }
+
+  // draw start point circle
+  cvCircle(image,
+    pointStart,
+    50,
+    BLACK,
+    5, 8, 0);
+
+  // find finish point 
+  int pointFinishIndex = 0;
+  for (int i = 0; i < cont->total; i++)
+  {
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, cont, i);
+    if ((pointTmp->x) == (pointFinish.x))
+    {
+      if ((pointTmp->y) == (pointFinish.y))
+      {
+        pointFinishIndex = i;
+      }
+    }
+  }
+
+  // draw finish point circle
+  cvCircle(image,
+    pointFinish,
+    50,
+    WHITE,
+    5, 8, 0);
+
+  /// 
+  CvPoint ttt;
+  ///
+
+  // find contour segment 
+  for (pointStartIndex = pointStartIndex + CountourStep; pointStartIndex < pointFinishIndex; pointStartIndex = pointStartIndex + CountourStep)
+  {
+    // read next point
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, cont, pointStartIndex);
+
+    //printf("pointIndex = ");
+    //printf("%d", pointIndex);
+    //printf("\n");
+
+    /// draw line 
+    ttt.x = pointTmp->x;
+    ttt.y = pointTmp->y;
+    cvLine(image, pointStart, ttt, WHITE, 15, 8, 0);
+    ///
+
+    // calculate part of contour lehgtn
+    int lengthPart = 0;
+    lengthPart = cvRound(sqrt(pow((pointStart.x - (pointTmp->x)), 2) +
+      pow((pointStart.y - (pointTmp->y)), 2)));
+
+    // add current part of contour to segment length
+    lengthTmp = lengthTmp + lengthPart;
+
+    pointStart.x = pointTmp->x;
+    pointStart.y = pointTmp->y;
+  }
+  return lengthTmp;
+}
+
+/// -------------------- end segment length function -----------------------
 
 
 int main(int argc, char* argv[])
@@ -875,7 +959,7 @@ int main(int argc, char* argv[])
   // rigth point set to left lower point 
   CvPoint SideRight = (0, 0);
   // set tpmPoint to (0, 0)    
-  CvPoint* tmpPoint = (0, 0);
+  CvPoint* pointTmp = (0, 0);
   // poiner for left/right point in contour
   int pointIndex = 0;
 
@@ -890,13 +974,13 @@ int main(int argc, char* argv[])
 
   for (int i = 0; i < result->total; i++)
   {
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
-    if (tmpPoint->y >(PantRect.y + cvRound(PantRect.height*0.75)))
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, i);
+    if (pointTmp->y >(PantRect.y + cvRound(PantRect.height*0.75)))
     {
-      if (tmpPoint->x < SideLeft.x)
+      if (pointTmp->x < SideLeft.x)
       {
-        SideLeft.x = tmpPoint->x;
-        SideLeft.y = tmpPoint->y;
+        SideLeft.x = pointTmp->x;
+        SideLeft.y = pointTmp->y;
         pointIndex = i;
       }
     }
@@ -911,13 +995,13 @@ int main(int argc, char* argv[])
   // find most right point below 75%
   for (int i = 0; i < result->total; i++)
   {
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
-    if (tmpPoint->y >(PantRect.y + cvRound(PantRect.height*0.75)))
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, i);
+    if (pointTmp->y >(PantRect.y + cvRound(PantRect.height*0.75)))
     {
-      if (tmpPoint->x > SideRight.x)
+      if (pointTmp->x > SideRight.x)
       {
-        SideRight.x = tmpPoint->x;
-        SideRight.y = tmpPoint->y;
+        SideRight.x = pointTmp->x;
+        SideRight.y = pointTmp->y;
         pointIndex = i;
       }
     }
@@ -970,11 +1054,11 @@ int main(int argc, char* argv[])
 
   for (int i = 0; i < result->total; i++)
   {
-    tmpPoint = CV_GET_SEQ_ELEM(CvPoint, result, i);
-    if (tmpPoint->x > CrotchPoint.x)
+    pointTmp = CV_GET_SEQ_ELEM(CvPoint, result, i);
+    if (pointTmp->x > CrotchPoint.x)
     {
-      CrotchPoint.x = tmpPoint->x;
-      CrotchPoint.y = tmpPoint->y;
+      CrotchPoint.x = pointTmp->x;
+      CrotchPoint.y = pointTmp->y;
       pointIndex = i;
     }
   }
@@ -990,19 +1074,15 @@ int main(int argc, char* argv[])
  
   /// --------------------------- Find E -----------------------------------------
   CvPoint ERight = contourIterate(seqT, CrotchPoint, 1.0*unit, 1);
+  CvPoint ELeft = (0, 0);
 
   // calculate ERight point 
   // use line parallel to G line
   // y = KG*x + BE 
-  float BE = ERight.y - KU * ERight.x;
+  //float BE = ERight.y - KU * ERight.x;
+  //ELeft.y = cvRound(KU*ELeft.x + BE);
 
-//  CvPoint ELeft = insert function there
-	
-
-  CvPoint ELeft = (0, 0);
-  ELeft.y = cvRound(KU*ELeft.x + BE);
 	std::vector<CvPoint>* points =getIntersections(image, ELeft, ERight, seqT);
-	
 	ELeft = points->front();
 	
   for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
@@ -1036,27 +1116,26 @@ int main(int argc, char* argv[])
   /// --------------------------- End find E -------------------------------------
 
   /// --------------------------- Find F -----------------------------------------
-  CvPoint FLeft = contourIterate(seqT, pants_l_u, 22.0*unit, -1);
+  CvPoint FLeft = contourIterate(seqT, pants_l_u, 23.0*unit, -1);
+  CvPoint FRight = (0, 0);
 
   // calculate FRight point 
   // use line parallel to G line
   // y = KG*x + BE 
   float BF = FLeft.y - KU * FLeft.x;
+  FRight.x = image->width;
+  FRight.y = cvRound(KU*FRight.x + BF);
 
-  //  CvPoint FLeft = insert function there
-
-   CvPoint FRight = (0, 0);
-   FRight.x = image->width;
-   FRight.y = cvRound(KU*FRight.x + BF);
-	points =getIntersections(image, FLeft, FRight, seqT);
+	points = getIntersections(image, FLeft, FRight, seqT);
 	FRight = points->front();
+
   for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
 	  if (point->x>FRight.x){
 		  FRight = *point;
 	  }
   }
 	printf("%d %d %d %d\n",FLeft.x, FLeft.y, FRight.x, FRight.y );
-delete(points);
+  delete(points);
   cvCircle(image,
     FRight,
     50,
@@ -1073,7 +1152,6 @@ delete(points);
   float F = sqrt(pow((FLeft.x - FRight.x), 2) +
     pow((FLeft.y - FRight.y), 2)) / unit;
 	 
-
   printf("F = ");
   printf("%f", F);
   printf(" inch\n");
@@ -1082,27 +1160,27 @@ delete(points);
 
 
   /// --------------------------- Find D -----------------------------------------
-  CvPoint DLeft = contourIterate(seqT, pants_l_u, 5.0*unit, -1);
+  CvPoint DLeft = contourIterate(seqT, pants_l_u, 8.5*unit, -1);
+  CvPoint DRight = (0, 0);
 
   // calculate DRight point 
   // use line parallel to G line
   // y = KG*x + BE 
   float BD = DLeft.y - KU * DLeft.x;
-
-  //  CvPoint DLeft = insert function there
-
-  CvPoint DRight = (0, 0);
   DRight.x = image->width;
   DRight.y = cvRound(KU*DRight.x + BD);
 
-	 points =getIntersections(image, DLeft, DRight, seqT);
+  points =getIntersections(image, DLeft, DRight, seqT);
 	DRight = points->front();
+
   for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
 	  if (point->x>DRight.x){
 		  DRight = *point;
 	  }
   }
+
 	delete(points);
+
   cvCircle(image,
     DRight,
     50,
@@ -1123,7 +1201,17 @@ delete(points);
   printf("%f", D);
   printf(" inch\n");
 
-  /// --------------------------- End find F -------------------------------------
+  /// --------------------------- End find D -------------------------------------
+  
+  /*
+  /// --------------------------- End find B2 ------------------------------------
+
+  int B2 = contourSegmentLenght(result, CrotchPoint, SideRight, 1);
+  printf("B2 = ");
+  printf("%f", B2);
+  printf(" inch\n");
+  /// --------------------------- End find B2 ------------------------------------
+  */
 
   /// -------------------------------- Display windows ---------------------------
   // resize picture
