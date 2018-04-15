@@ -259,3 +259,7 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+
+openCV_pants/a.out
+openCV_pants/src.jpg
+openCV_pants/main
