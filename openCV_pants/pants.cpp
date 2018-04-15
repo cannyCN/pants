@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <string>
 
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
@@ -19,6 +20,7 @@ double unit = 0.;
 // Object size in inch 3*3
 double square_width = 3 * 25.4;
 double square_high = 3 * 25.4;
+char tmpstr[500];
 
 // define colors
 // [R, G, B]
@@ -29,6 +31,15 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
+void printOnIm(IplImage* im, char* text, CvPoint* point, int size=6){
+CvFont font;
+double hScale=size;
+double vScale=size;
+int    lineWidth=10;
+cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, hScale,vScale,0,lineWidth);
+
+cvPutText (im, text, *point, &font, cvScalar(255,255,255));
+}
 /// ---------------------- calculate length ot contour segment -----------------
 CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
 
@@ -1052,6 +1063,8 @@ int main(int argc, char* argv[])
   G = sqrt(pow((SideLeft.x - SideRight.x), 2) +
     pow((SideLeft.y - SideRight.y), 2)) / unit;
 
+	sprintf(tmpstr, "G=%f", G);
+	printOnIm(image, tmpstr, new CvPoint(SideRight.x+60, SideRight.y), 4);
   printf("G = ");
   printf("%f", G);
   printf(" inch\n");
@@ -1119,7 +1132,10 @@ int main(int argc, char* argv[])
 
   float E = sqrt(pow((ELeft.x - ERight.x), 2) +
     pow((ELeft.y - ERight.y), 2)) / unit;
-
+    
+	sprintf(tmpstr, "E=%f", E);
+	printOnIm(image, tmpstr, new CvPoint(ERight.x+60, ERight.y), 4);
+	
   printf("E = ");
   printf("%f", E);
   printf(" inch\n");
@@ -1162,7 +1178,11 @@ int main(int argc, char* argv[])
 
   float F = sqrt(pow((FLeft.x - FRight.x), 2) +
     pow((FLeft.y - FRight.y), 2)) / unit;
-	 
+	
+	sprintf(tmpstr, "F=%f", F);
+	printOnIm(image, tmpstr, new CvPoint(FRight.x+60, FRight.y), 4);
+	
+	
   printf("F = ");
   printf("%f", F);
   printf(" inch\n");
@@ -1208,6 +1228,9 @@ int main(int argc, char* argv[])
   float D = sqrt(pow((DLeft.x - DRight.x), 2) +
     pow((DLeft.y - DRight.y), 2)) / unit;
 
+	sprintf(tmpstr, "D=%f", D);
+	printOnIm(image, tmpstr, new CvPoint(DRight.x+60, DRight.y), 4);
+	
   printf("D = ");
   printf("%f", D);
   printf(" inch\n");
@@ -1216,6 +1239,8 @@ int main(int argc, char* argv[])
   
   /// ------------------------------  find B2 ------------------------------------
   float B2 = contourSegmentLenght(seqT, CrotchPoint, SideRight, 1) / unit;
+	sprintf(tmpstr, "B2=%f", B2);
+	printOnIm(image, tmpstr, new CvPoint(ERight.x+60, ERight.y-100), 4);
   printf("B2 = ");
   printf("%f", B2);
   printf(" inch\n");
