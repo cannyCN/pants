@@ -8,6 +8,10 @@
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
 
+#include <JsonBox.h>
+
+using namespace JsonBox;
+
 // define matrix for picture
 IplImage* image = 0;
 IplImage* gray_picture = 0;
@@ -1248,6 +1252,8 @@ int main(int argc, char* argv[])
 
   /// --------------------------- find Outseam -----------------------------------
   float Outseam = contourSegmentLenght(seqT, pants_l_u, SideLeft, -1) / unit;
+	sprintf(tmpstr, "Outseam=%f", Outseam);
+	printOnIm(image, tmpstr, new CvPoint(SideLeft.x, SideLeft.y+200), 4);
   printf("Outseam = ");
   printf("%f", Outseam);
   printf(" inch\n");
@@ -1255,6 +1261,20 @@ int main(int argc, char* argv[])
 
   /// -------------------------------- Display windows ---------------------------
   // resize picture
+	Value root;
+	root["waistband"] = Value(0);
+	root["crotch_length"] = Value(0);
+	root["crotch_length_front"]= Value(0);
+	root["crotch_length_rear"]= Value(B2);
+	root["inseam_left"] = Value(0);
+	root["buttock_girth"] = Value(D);
+	root["thigh_girth_left_horizontal"] = Value(E);
+	root["knee_girth_left"] = Value(F);
+	root["dist_waistband_knee"] = Value(0);
+	root["crotch_knee_height"] = Value(0);
+	root["sideseam_waist_left"] = Value(0);
+	root["sideseam_ankle_left"] = Value(Outseam);
+std::cout<<root;
 
   cvSaveImage("src.jpg", image, 0);
 
