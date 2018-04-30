@@ -2,11 +2,14 @@
 #include <highgui.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <vector>
 #include <string>
 
 #include <iostream>
 #include <opencv2/imgcodecs.hpp>
+
+int DEBUG = 0;
 
 // define matrix for picture
 IplImage* image = 0;
@@ -31,14 +34,42 @@ const CvScalar YELLOW2 = CV_RGB(42, 255, 255);
 const CvScalar RED = CV_RGB(255, 0, 0);
 const CvScalar BLUE = CV_RGB(0, 0, 255);
 
-void printOnIm(IplImage* im, char* text, CvPoint* point, int size=6){
-CvFont font;
-double hScale=size;
-double vScale=size;
-int    lineWidth=10;
-cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, hScale,vScale,0,lineWidth);
+char *replace_str(char *str, const char *orig, const char *rep) {
+  static char buffer[4096];
+  char *p;
 
-cvPutText (im, text, *point, &font, cvScalar(255,255,255));
+  if(!(p = strstr(str, orig)))  // Is 'orig' even in 'str'?
+    return str;
+
+  strncpy(buffer, str, p-str); // Copy characters from 'str' start to 'orig' st$
+  buffer[p-str] = '\0';
+
+  sprintf(buffer+(p-str), "%s%s", rep, p+strlen(orig));
+
+  return buffer;
+}
+
+int debug_printf(int is_debug, const char* format, ...) {
+  if (is_debug) {
+    va_list args;
+    va_start (args, format);
+    int res = vprintf (format, args);
+    va_end (args);
+
+    return res;
+  } else {
+    return 0;
+  }
+}
+
+void printOnIm(IplImage* im, char* text, CvPoint* point, int size=6){
+  CvFont font;
+  double hScale=size;
+  double vScale=size;
+  int    lineWidth=10;
+  cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, hScale,vScale,0,lineWidth);
+
+  cvPutText (im, text, *point, &font, cvScalar(255,255,255));
 }
 /// ---------------------- calculate length ot contour segment -----------------
 CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
@@ -70,7 +101,7 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
     CountourStep = -1;
   }
 
-  // find most start point 
+  // find most start point
   CvPoint* pointTmp;
   int pointIndex;
   for (int i = 0; i < result->total; i++)
@@ -96,13 +127,13 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
     WHITE,
     5, 8, 0);
 
-  /// 
+  ///
     CvPoint ttt;
   ///
 
   pointIndex = pointIndex + CountourStep;
   int pointFinish = 0;
-  // find contour segment 
+  // find contour segment
   while ((lengthTmp < lenght) && (pointFinish == 0))
   {
     // read next point
@@ -111,8 +142,8 @@ CvPoint contourIterate(CvSeq* contour, CvPoint point, int lenght, int CW) {
     //printf("pointIndex = ");
     //printf("%d", pointIndex);
     //printf("\n");
-    
-    /// draw line 
+
+    /// draw line
     ttt.x = pointTmp->x;
     ttt.y = pointTmp->y;
     cvLine(image, pointStart, ttt, WHITE, 15, 8, 0);
@@ -178,16 +209,16 @@ std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSe
     	   255,linewidth , CV_AA, 0);
 	IplImage *img_line = cvCreateImage(cvGetSize(img), IPL_DEPTH_8U, 1);
 	cvSet(img_line, 0);
-	
+
 	cvLine(img_line,
       a,
       b,
       WHITE,
      linewidth, CV_AA, 0);
-	
+
 	cv::Mat res;
 	std::vector<CvPoint> *pointst = new std::vector<CvPoint>();
-	bitwise_and(cv::cvarrToMat(img_contours),cv::cvarrToMat(img_line), res); 
+	bitwise_and(cv::cvarrToMat(img_contours),cv::cvarrToMat(img_line), res);
 	cvSaveImage("output/result3.jpg", img_line);
 	cvSaveImage("output/result4.jpg", img_contours);
 	imwrite("output/result.jpg",res);
@@ -204,16 +235,16 @@ std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSe
 			   }
 			 }
 		 }
-	
+
 	std::vector<CvPoint> *points = new std::vector<CvPoint>();
 	for(std::vector<CvPoint>::iterator it = pointst->begin(); it < pointst->end(); it++){
 		CvPoint p = CvPoint((*it).x, (*it).y);
 		CvPoint ptmp = CvPoint((*it).x, (*it).y);
 		int counter = 1;
-		
+
 		for(std::vector<CvPoint>::iterator it2 = pointst->begin(); it2 < pointst->end(); it2++){
 			CvPoint diff = CvPoint(p.x - (*it2).x,p.y-(*it2).y);
-			
+
               if (cv::sqrt(diff.x*diff.x + diff.y*diff.y) < treshold){
 				  ptmp =CvPoint(ptmp.x + (*it2).x,ptmp.y+(*it2).y);
 				  counter++;
@@ -221,10 +252,10 @@ std::vector<CvPoint>* getIntersections(IplImage* img, CvPoint a, CvPoint b, CvSe
 				  it2--;
 			  }
 		}
-		
+
 		ptmp =CvPoint(ptmp.x / counter,ptmp.y/counter);
-points->push_back(ptmp);
-		std::cout<<ptmp.x<<" "<<ptmp.y<<std::endl;
+    points->push_back(ptmp);
+    debug_printf(DEBUG, "%d %d\n", ptmp.x, ptmp.y);
 	}
 	delete pointst;
 	return points;
@@ -265,7 +296,7 @@ int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) 
 	int lengthTmp = 0;
 	int CountourStep = CW;
 
-	// find start point 
+	// find start point
 	CvPoint* pointTmp;
 	int pointStartIndex = 0;
 	for (int i = 0; i < cont->total; i++)
@@ -287,7 +318,7 @@ int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) 
 		BLACK,
 		5, 8, 0);
 
-	// find finish point 
+	// find finish point
 	int pointFinishIndex = 0;
 	for (int i = 0; i < cont->total; i++)
 	{
@@ -308,11 +339,11 @@ int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) 
 		WHITE,
 		5, 8, 0);
 
-	/// 
+	///
 	CvPoint ttt;
 	///
 
-	// find contour segment 
+	// find contour segment
 	for (pointStartIndex = pointStartIndex + CountourStep; pointStartIndex <= pointFinishIndex; pointStartIndex = pointStartIndex + CountourStep)
 	{
 		// read next point
@@ -322,7 +353,7 @@ int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) 
 		//printf("%d", pointIndex);
 		//printf("\n");
 
-		/// draw line 
+		/// draw line
 		ttt.x = pointTmp->x;
 		ttt.y = pointTmp->y;
 		cvLine(image, pointStart, ttt, WHITE, 15, 8, 0);
@@ -344,18 +375,22 @@ int contourSegmentLenght(CvSeq* contour, CvPoint Start, CvPoint Finish, int CW) 
 
 /// -------------------- end segment length function -----------------------
 
-
 int main(int argc, char* argv[])
 {
+  int file_arg = 1;
+  if (argv[1][0] == '-' && argv[1][1] == 'd') {
+    DEBUG = 1;
+    file_arg = 2;
+  }
 
   // Load an image
-  const char* filename = argc >= 2 ? const_cast<char*>(argv[1]) : "test.jpg";
+  char* filename = argc >= 2 ? argv[file_arg] : (char*)"test.jpg";
   image = cvLoadImage(filename, 1);
-  printf("[i] image: %s\n", filename);
+  debug_printf(DEBUG, "[i] image: %s\n", filename);
   assert(image != 0);
 
-  /// Create images 
-  // 1 channel for GrayScale 
+  /// Create images
+  // 1 channel for GrayScale
   gray_picture = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
   // 1 image for ROI
   img_roi = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U, 1);
@@ -369,7 +404,7 @@ int main(int argc, char* argv[])
     //CV_RGB2HSV);
     CV_RGB2GRAY);
 
-  // copy image 
+  // copy image
   cvCopy(gray_picture, img_roi, NULL);
 
   // set ROI
@@ -425,7 +460,7 @@ int main(int argc, char* argv[])
   /// ---------------------------------- End Canny -------------------------------
 
   /// --------------------------- yellow Rectangle -------------------------------
-  // Find longest contour 
+  // Find longest contour
   CvMemStorage* storageContour = cvCreateMemStorage(0);
   CvSeq* contours = 0;
 
@@ -452,7 +487,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  // Draw contour 
+  // Draw contour
   cvDrawContours(img_roi,
     seqT,
     RED,
@@ -460,8 +495,8 @@ int main(int argc, char* argv[])
     0, 10, 8, 0);
 
   // Draw rectagle
-  printf("\n");
-  printf("Yellow Rectangle corner\n");
+  debug_printf(DEBUG, "\n");
+  debug_printf(DEBUG, "Yellow Rectangle corner\n");
 
   CvBox2D rect;
   CvPoint2D32f rect_vtx[4];
@@ -477,11 +512,11 @@ int main(int argc, char* argv[])
   {
 
 
-    printf("rect.x = ");
-    printf("%d", pt0.x);
+    debug_printf(DEBUG, "rect.x = ");
+    debug_printf(DEBUG, "%d", pt0.x);
 
-    printf("    rect.y = ");
-    printf("%d\n", pt0.y);
+    debug_printf(DEBUG, "    rect.y = ");
+    debug_printf(DEBUG, "%d\n", pt0.y);
 
     pt.x = cvRound(rect_vtx[i].x);
     pt.y = cvRound(rect_vtx[i].y);
@@ -502,8 +537,8 @@ int main(int argc, char* argv[])
   double length = 0.;
   double length_tmp = 0.;
 
-  printf("\n");
-  printf("Rectangle sides length \n");
+  debug_printf(DEBUG, "\n");
+  debug_printf(DEBUG, "Rectangle sides length \n");
 
   for (i = 0; i < 4; i++)
   {
@@ -512,8 +547,8 @@ int main(int argc, char* argv[])
       length_tmp = sqrt(pow((rect_vtx[i + 1].x - rect_vtx[i].x), 2) +
         pow((rect_vtx[i + 1].y - rect_vtx[i].y), 2));
 
-      printf("length = ");
-      printf("%f\n", length_tmp);
+      debug_printf(DEBUG, "length = ");
+      debug_printf(DEBUG, "%f\n", length_tmp);
 
       length = length + length_tmp;
     }
@@ -522,8 +557,8 @@ int main(int argc, char* argv[])
       length_tmp = sqrt(pow((rect_vtx[0].x - rect_vtx[3].x), 2) +
         pow((rect_vtx[0].y - rect_vtx[3].y), 2));
 
-      printf("length = ");
-      printf("%f\n", length_tmp);
+      debug_printf(DEBUG, "length = ");
+      debug_printf(DEBUG, "%f\n", length_tmp);
 
       length = length + length_tmp;
     }
@@ -531,16 +566,16 @@ int main(int argc, char* argv[])
 
   length = length / 4.;
 
-  printf("Average length = ");
-  printf("%f\n", length);
-  printf("\n");
+  debug_printf(DEBUG, "Average length = ");
+  debug_printf(DEBUG, "%f\n", length);
+  debug_printf(DEBUG, "\n");
 
-  unit = length / square_high * 25.4;
+  unit = length / square_high * 10;
 
-  printf("units = ");
-  printf("%f", unit);
-  printf(" pixel/inch\n");
-  printf("\n");
+  debug_printf(DEBUG, "units = ");
+  debug_printf(DEBUG, "%f", unit);
+  debug_printf(DEBUG, " pixel/inch\n");
+  debug_printf(DEBUG, "\n");
 
   /// --------------------------- end pixels_per_metric --------------------------
 
@@ -581,7 +616,7 @@ int main(int argc, char* argv[])
     WHITE,
     0, 50, 8, 0);
 
-  // 
+  //
   cvDilate(gray_picture,
     gray_picture,
     0, 1);
@@ -639,7 +674,7 @@ int main(int argc, char* argv[])
   /// ---------------------------------- End Canny -------------------------------
 
   /// ------------------------- finding pant contour ----------------------------
-  // Find longest contour 
+  // Find longest contour
   // contour direction - clockwise (CW)
   CvMemStorage* storageContourT = cvCreateMemStorage(0);
   contours = 0;
@@ -665,7 +700,7 @@ int main(int argc, char* argv[])
       }
     }
   }
-  // Draw contour 
+  // Draw contour
   cvDrawContours(gray_picture,
     seqT,
     WHITE,
@@ -684,8 +719,8 @@ int main(int argc, char* argv[])
     CV_POLY_APPROX_DP,
     20, 0);
 
-  // change line thickness to -1 for contour filling 
-  // Draw approximation contour 
+  // change line thickness to -1 for contour filling
+  // Draw approximation contour
   cvDrawContours(image,
     result,
     RED,
@@ -698,7 +733,7 @@ int main(int argc, char* argv[])
   int blockSize = 3;
   double k = 0.04;
 
-  printf("Longest contour, App poly points %d %d\n", seqT->total, result->total);
+  debug_printf(DEBUG, "Longest contour, App poly points %d %d\n", seqT->total, result->total);
   /// ----------------- end approximate pants ------------------------------------
 
 
@@ -718,11 +753,11 @@ int main(int argc, char* argv[])
     pt.x = cvRound(rect_pants_vtx[i].x);
     pt.y = cvRound(rect_pants_vtx[i].y);
 
-    printf("rect_pants.x = ");
-    printf("%d", pt.x);
+    debug_printf(DEBUG, "rect_pants.x = ");
+    debug_printf(DEBUG, "%d", pt.x);
 
-    printf("    rect_pants.y = ");
-    printf("%d\n", pt.y);
+    debug_printf(DEBUG, "    rect_pants.y = ");
+    debug_printf(DEBUG, "%d\n", pt.y);
 
     cvLine(image,
       pt0,
@@ -811,7 +846,7 @@ int main(int argc, char* argv[])
   // x of left test point set to 0
   // y - calculate
   CvPoint Left_test = (0, 0);
-  // x of rigth point set image width 
+  // x of rigth point set image width
   CvPoint Right_test = (0, 0);
 
   Left_test.y = cvRound(BU);
@@ -840,15 +875,15 @@ int main(int argc, char* argv[])
   x_lim = cvRound(rect_pants_vtx[corner_l_u].x + cvRound(rect_width * 0.2));
   y_lim = cvRound(rect_pants_vtx[corner_l_u].y + cvRound(rect_width * 0.2));
 
-  printf("x_lim = ");
-  printf("%d\n", x_lim);
-  printf("y_lim = ");
-  printf("%d\n", y_lim);
+  debug_printf(DEBUG, "x_lim = ");
+  debug_printf(DEBUG, "%d\n", x_lim);
+  debug_printf(DEBUG, "y_lim = ");
+  debug_printf(DEBUG, "%d\n", y_lim);
 
-  // set tpmPoint to (0, 0)    
+  // set tpmPoint to (0, 0)
   CvPoint pt10 = (0, 0);
 
-  // temp contour 
+  // temp contour
   CvMemStorage* storage12 = cvCreateMemStorage(0);
   CvSeq* result_copy = cvCreateSeq(CV_SEQ_KIND_GENERIC | CV_32SC2, sizeof(CvContour),
     sizeof(CvPoint), storage12);
@@ -870,12 +905,12 @@ int main(int argc, char* argv[])
     }
     else
     {
-      printf("i = ");
-      printf("%d", i);
-      printf("; pt10.x = ");
-      printf("%d", pt10.x);
-      printf("; pt10.y = ");
-      printf("%d\n", pt10.y);
+      debug_printf(DEBUG, "i = ");
+      debug_printf(DEBUG, "%d", i);
+      debug_printf(DEBUG, "; pt10.x = ");
+      debug_printf(DEBUG, "%d", pt10.x);
+      debug_printf(DEBUG, "; pt10.y = ");
+      debug_printf(DEBUG, "%d\n", pt10.y);
       number_ROI_points++;
       cvSeqPush(result_copy, &pt10);
     }
@@ -889,7 +924,7 @@ int main(int argc, char* argv[])
 
   }
 
-  printf("result_copy size=%d\n", result_copy->total);
+  debug_printf(DEBUG, "result_copy size=%d\n", result_copy->total);
 
   /// ----------------- end mark pants appr contour points in ROI ----------------
 
@@ -924,15 +959,15 @@ int main(int argc, char* argv[])
       }
 
       // is hightest point most left point?
-      // not_left - flag 
+      // not_left - flag
       // if flag not change - our highest point is most left point
       int not_left = 0;
       int j = 0;
       while ((j < result_copy->total) || (not_left != 0))
       {
         CvPoint* p = CV_GET_SEQ_ELEM(CvPoint, result_copy, j);
-        // point have X more or equal to highest point's X 
-        printf("%d %d %d\n", j, point_index, result_copy->total); 
+        // point have X more or equal to highest point's X
+        debug_printf(DEBUG, "%d %d %d\n", j, point_index, result_copy->total);
 
 
 
@@ -978,9 +1013,9 @@ int main(int argc, char* argv[])
   // set side lower points
   // left point set to rigth upper point
   CvPoint SideLeft = (image->width, image->height);
-  // rigth point set to left lower point 
+  // rigth point set to left lower point
   CvPoint SideRight = (0, 0);
-  // set tpmPoint to (0, 0)    
+  // set tpmPoint to (0, 0)
   CvPoint* pointTmp = (0, 0);
   // poiner for left/right point in contour
   int pointIndex = 0;
@@ -1036,7 +1071,7 @@ int main(int argc, char* argv[])
     5, 8, 0);
 
   // calculate line equation
-  // line from left/right point 
+  // line from left/right point
   // y = KG*x + BG
   //
   //       y1 - y2
@@ -1065,9 +1100,9 @@ int main(int argc, char* argv[])
 
 	sprintf(tmpstr, "G=%f", G);
 	printOnIm(image, tmpstr, new CvPoint(SideRight.x+60, SideRight.y), 4);
-  printf("G = ");
-  printf("%f", G);
-  printf(" inch\n");
+  debug_printf(DEBUG, "G = ");
+  debug_printf(DEBUG, "%f", G);
+  debug_printf(DEBUG, " inch\n");
   /// ------------- end define G size (lowest point of pant) ---------------------
 
   /// ---------------------- find crotch point -----------------------------------
@@ -1095,27 +1130,27 @@ int main(int argc, char* argv[])
     15, 8, 0);
   /// ---------------------- end find crotch point -------------------------------
 
- 
+
   /// --------------------------- Find E -----------------------------------------
   CvPoint ERight = contourIterate(seqT, CrotchPoint, 1.0*unit, 1);
   CvPoint ELeft = (0, 0);
 
-  // calculate ERight point 
+  // calculate ERight point
   // use line parallel to G line
-  // y = KG*x + BE 
+  // y = KG*x + BE
   float BE = ERight.y - KU * ERight.x;
   ELeft.y = cvRound(KU*ELeft.x + BE);
 
 	std::vector<CvPoint>* points =getIntersections(image, ELeft, ERight, seqT);
 	ELeft = points->front();
-	
+
   for (std::vector<CvPoint>::iterator point =  points-> begin(); point != points->end(); point++){
 	  //printf("%d ______\n", ELeft.x);
 	  if (point->x<ELeft.x){
 		  ELeft = *point;
 	  }
   }
-	printf("%d %d %d %d\n",ELeft.x, ELeft.y, ERight.x, ERight.y );
+	debug_printf(DEBUG, "%d %d %d %d\n",ELeft.x, ELeft.y, ERight.x, ERight.y );
 	//delete(points);
   cvCircle(image,
       ELeft,
@@ -1132,23 +1167,23 @@ int main(int argc, char* argv[])
 
   float E = sqrt(pow((ELeft.x - ERight.x), 2) +
     pow((ELeft.y - ERight.y), 2)) / unit;
-    
+
 	sprintf(tmpstr, "E=%f", E);
 	printOnIm(image, tmpstr, new CvPoint(ERight.x+60, ERight.y), 4);
-	
-  printf("E = ");
-  printf("%f", E);
-  printf(" inch\n");
-  
+
+  debug_printf(DEBUG, "E = ");
+  debug_printf(DEBUG, "%f", E);
+  debug_printf(DEBUG, " inch\n");
+
   /// --------------------------- End find E -------------------------------------
 
   /// --------------------------- Find F -----------------------------------------
   CvPoint FLeft = contourIterate(seqT, pants_l_u, 23.0*unit, -1);
   CvPoint FRight = (0, 0);
 
-  // calculate FRight point 
+  // calculate FRight point
   // use line parallel to G line
-  // y = KG*x + BE 
+  // y = KG*x + BE
   float BF = FLeft.y - KU * FLeft.x;
   FRight.x = image->width;
   FRight.y = cvRound(KU*FRight.x + BF);
@@ -1161,7 +1196,7 @@ int main(int argc, char* argv[])
 		  FRight = *point;
 	  }
   }
-	printf("%d %d %d %d\n",FLeft.x, FLeft.y, FRight.x, FRight.y );
+	debug_printf(DEBUG, "%d %d %d %d\n",FLeft.x, FLeft.y, FRight.x, FRight.y );
   delete(points);
   cvCircle(image,
     FRight,
@@ -1178,14 +1213,14 @@ int main(int argc, char* argv[])
 
   float F = sqrt(pow((FLeft.x - FRight.x), 2) +
     pow((FLeft.y - FRight.y), 2)) / unit;
-	
+
 	sprintf(tmpstr, "F=%f", F);
 	printOnIm(image, tmpstr, new CvPoint(FRight.x+60, FRight.y), 4);
-	
-	
-  printf("F = ");
-  printf("%f", F);
-  printf(" inch\n");
+
+
+  debug_printf(DEBUG, "F = ");
+  debug_printf(DEBUG, "%f", F);
+  debug_printf(DEBUG, " inch\n");
 
   /// --------------------------- End find F -------------------------------------
 
@@ -1194,9 +1229,9 @@ int main(int argc, char* argv[])
   CvPoint DLeft = contourIterate(seqT, pants_l_u, 8.5*unit, -1);
   CvPoint DRight = (0, 0);
 
-  // calculate DRight point 
+  // calculate DRight point
   // use line parallel to G line
-  // y = KG*x + BE 
+  // y = KG*x + BE
   float BD = DLeft.y - KU * DLeft.x;
   DRight.x = image->width;
   DRight.y = cvRound(KU*DRight.x + BD);
@@ -1230,54 +1265,55 @@ int main(int argc, char* argv[])
 
 	sprintf(tmpstr, "D=%f", D);
 	printOnIm(image, tmpstr, new CvPoint(DRight.x+60, DRight.y), 4);
-	
-  printf("D = ");
-  printf("%f", D);
-  printf(" inch\n");
+
+  debug_printf(DEBUG, "D = ");
+  debug_printf(DEBUG, "%f", D);
+  debug_printf(DEBUG, " inch\n");
 
   /// --------------------------- End find D -------------------------------------
-  
+
   /// ------------------------------  find B2 ------------------------------------
   float B2 = contourSegmentLenght(seqT, CrotchPoint, SideRight, 1) / unit;
 	sprintf(tmpstr, "B2=%f", B2);
 	printOnIm(image, tmpstr, new CvPoint(ERight.x+60, ERight.y-100), 4);
-  printf("B2 = ");
-  printf("%f", B2);
-  printf(" inch\n");
+  debug_printf(DEBUG, "B2 = ");
+  debug_printf(DEBUG, "%f", B2);
+  debug_printf(DEBUG, " inch\n");
   /// --------------------------- End find B2 ------------------------------------
 
   /// --------------------------- find Outseam -----------------------------------
   float Outseam = contourSegmentLenght(seqT, pants_l_u, SideLeft, -1) / unit;
-  printf("Outseam = ");
-  printf("%f", Outseam);
-  printf(" inch\n");
+  debug_printf(DEBUG, "Outseam = ");
+  debug_printf(DEBUG, "%f", Outseam);
+  debug_printf(DEBUG, " inch\n");
   /// --------------------------- End find Outseam -------------------------------
 
   /// -------------------------------- Display windows ---------------------------
   // resize picture
 
-  cvSaveImage("src.jpg", image, 0);
+  cvSaveImage(replace_str(filename, ".jpg", "-out.jpg"), image, 0);
 
-  // Create a window to display results
-  cvNamedWindow("original", CV_WINDOW_NORMAL);
-  cvNamedWindow("gray", CV_WINDOW_NORMAL);
+  // // Create a window to display results
+  // cvNamedWindow("original", CV_WINDOW_NORMAL);
+  // cvNamedWindow("gray", CV_WINDOW_NORMAL);
 
-  // Show images
-  cvShowImage("original", image);
-  cvShowImage("gray", gray_picture);
+  // // Show images
+  // cvShowImage("original", image);
+  // cvShowImage("gray", gray_picture);
 
   // --------------------------------- Clear memory ------------------------------
   // От кого я особенно ненавижу - так ето вас всех!
   // Kill them all!
 
   // Wait until user finishes program
-  cvWaitKey(0);
+  // cvWaitKey(0);
 
   // release memory
   cvReleaseImage(&image);
   cvReleaseImage(&gray_picture);
 
+  printf("%s, %f, %f, %f, %f, %f, %f\n", filename, G, E, F, D*4, B2, Outseam);
   // Delete windows
-  cvDestroyAllWindows();
+  // cvDestroyAllWindows();
   return 0;
 }
