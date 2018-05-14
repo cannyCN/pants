@@ -570,7 +570,7 @@ int main(int argc, char* argv[])
   debug_printf(DEBUG, "%f\n", length);
   debug_printf(DEBUG, "\n");
 
-  unit = length / square_high * 10;
+  unit = length / square_high * 25.4;
 
   debug_printf(DEBUG, "units = ");
   debug_printf(DEBUG, "%f", unit);
@@ -1312,7 +1312,7 @@ int main(int argc, char* argv[])
   cvReleaseImage(&image);
   cvReleaseImage(&gray_picture);
 
-  printf("%s, %f, %f, %f, %f, %f, %f\n", filename, G, E, F, D*4, B2, Outseam);
+  printf("%s, %f, %f, %f, %f, %f, %f\n", filename, G*2.54, E*2.54, F*2.54, D*4*2.54, B2*2.54, Outseam*2.54);
   // Delete windows
   // cvDestroyAllWindows();
   return 0;
